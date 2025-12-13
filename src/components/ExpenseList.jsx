@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -8,6 +8,32 @@ export const ExpenseList = ({ expenses }) => {
         if (window.confirm('Apagar despesa?')) {
             await deleteDoc(doc(db, 'expenses', id));
         }
+    };
+
+    const handleExportCSV = () => {
+        if (!expenses.length) return;
+
+        const headers = ['Data', 'Descrição', 'Pessoa', 'Categoria', 'Valor'];
+        const csvContent = [
+            headers.join(','),
+            ...expenses.map(e => [
+                e.date,
+                `"${e.description.replace(/"/g, '""')}"`, // Escape quotes
+                e.userName,
+                e.category,
+                e.amount
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `despesas_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     if (expenses.length === 0) {
@@ -20,7 +46,26 @@ export const ExpenseList = ({ expenses }) => {
 
     return (
         <div className="glass-panel" style={{ padding: '20px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Despesas Recentes</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0 }}>Despesas Recentes</h3>
+                <button
+                    onClick={handleExportCSV}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        color: 'white',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.9em'
+                    }}
+                >
+                    <Download size={16} /> Exportar CSV
+                </button>
+            </div>
             <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
                     <thead>

@@ -4,9 +4,10 @@ import { ExpenseForm } from './ExpenseForm';
 import { ExpenseList } from './ExpenseList';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { LogOut } from 'lucide-react';
+import { LogOut, Calendar, Layers } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
+import { CATEGORIES, CATEGORY_COLORS } from '../constants';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -14,6 +15,7 @@ export const Dashboard = () => {
     const { currentUser, logout } = useAuth();
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState('month'); // 'month' or 'all'
 
     const [isOffline, setIsOffline] = useState(false);
 
@@ -47,11 +49,17 @@ export const Dashboard = () => {
         return () => unsubscribe();
     }, []);
 
-    // Analytics Logic
-    const totalAmount = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+    // Helper: Filter expenses by month if needed
+    const filteredExpenses = viewMode === 'month'
+        ? expenses.filter(e => e.date.startsWith(new Date().toISOString().slice(0, 7)))
+        : expenses;
+
+    const totalAmount = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+    // Analytics Logic (Always uses filteredExpenses for immediate charts)
 
     // By Category
-    const byCategory = expenses.reduce((acc, curr) => {
+    const byCategory = filteredExpenses.reduce((acc, curr) => {
         acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
         return acc;
     }, {});
@@ -60,15 +68,13 @@ export const Dashboard = () => {
         labels: Object.keys(byCategory),
         datasets: [{
             data: Object.values(byCategory),
-            backgroundColor: [
-                '#6366f1', '#f472b6', '#34d399', '#facc15', '#a78bfa', '#fb923c'
-            ],
+            backgroundColor: Object.keys(byCategory).map(cat => CATEGORY_COLORS[cat] || '#94a3b8'),
             borderWidth: 0,
         }]
     };
 
     // By Person
-    const byPerson = expenses.reduce((acc, curr) => {
+    const byPerson = filteredExpenses.reduce((acc, curr) => {
         acc[curr.userName] = (acc[curr.userName] || 0) + curr.amount;
         return acc;
     }, {});
@@ -93,7 +99,7 @@ export const Dashboard = () => {
         }
     };
 
-    // Historical Analytics (Last 12 Months)
+    // Historical Analytics (Last 12 Months) - ALWAYS uses all expenses
     const [historyData, setHistoryData] = useState(null);
 
     useEffect(() => {
@@ -118,21 +124,10 @@ export const Dashboard = () => {
                 }
             });
 
-            // Datasets
-            const categories = [...new Set(expenses.map(e => e.category))];
-            const colors = {
-                'Mercado': '#6366f1',
-                'Contas': '#f472b6',
-                'Lazer': '#34d399',
-                'Transporte': '#facc15',
-                'Saúde': '#a78bfa',
-                'Outros': '#fb923c'
-            };
-
-            const datasets = categories.map(cat => ({
+            const datasets = CATEGORIES.map(cat => ({
                 label: cat,
                 data: last12Months.map(m => dataByMonth[m][cat] || 0),
-                backgroundColor: colors[cat] || '#94a3b8',
+                backgroundColor: CATEGORY_COLORS[cat] || '#94a3b8',
                 stack: 'Stack 0',
             }));
 
@@ -195,11 +190,36 @@ export const Dashboard = () => {
             {/* Main Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 {/* Total Card */}
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9em' }}>Total de Despesas</span>
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9em' }}>
+                            {viewMode === 'month' ? 'Total Este Mês' : 'Total Geral'}
+                        </span>
+                        <button
+                            onClick={() => setViewMode(prev => prev === 'month' ? 'all' : 'month')}
+                            style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                border: 'none',
+                                color: 'var(--color-text-muted)',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                title: viewMode === 'month' ? "Ver Total Geral" : "Ver Apenas Este Mês"
+                            }}
+                        >
+                            {viewMode === 'month' ? <Layers size={16} /> : <Calendar size={16} />}
+                        </button>
+                    </div>
                     <span style={{ fontSize: '2.5em', fontWeight: '800', color: 'white' }}>
                         €{totalAmount.toFixed(2)}
                     </span>
+                    <div style={{ fontSize: '0.8em', color: viewMode === 'month' ? '#4ade80' : '#facc15', marginTop: '5px' }}>
+                        {viewMode === 'month' ? 'Exibindo apenas mês atual' : 'Exibindo todo o histórico'}
+                    </div>
                 </div>
 
                 {/* Input Form */}
@@ -209,13 +229,13 @@ export const Dashboard = () => {
 
                 {/* Analytics 1: Category */}
                 <div className="glass-panel" style={{ padding: '20px', minHeight: '300px' }}>
-                    <h4 style={{ marginBottom: '15px' }}>Por Categoria</h4>
+                    <h4 style={{ marginBottom: '15px' }}>Por Categoria ({viewMode === 'month' ? 'Mês' : 'Total'})</h4>
                     <Pie data={categoryData} options={{ plugins: { legend: { position: 'right', labels: { color: '#fff' } } } }} />
                 </div>
 
                 {/* Analytics 2: Person */}
                 <div className="glass-panel" style={{ padding: '20px', minHeight: '300px' }}>
-                    <h4 style={{ marginBottom: '15px' }}>Gastos por Pessoa</h4>
+                    <h4 style={{ marginBottom: '15px' }}>Gastos por Pessoa ({viewMode === 'month' ? 'Mês' : 'Total'})</h4>
                     {Object.keys(byPerson).length > 0 ? (
                         <Bar data={personData} options={chartOptions} />
                     ) : (

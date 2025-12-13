@@ -3,14 +3,13 @@ import { db } from '../services/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { PlusCircle, Loader2 } from 'lucide-react';
-
-const CATEGORIES = ['Mercado', 'Contas', 'Lazer', 'Transporte', 'Saúde', 'Outros'];
+import { CATEGORIES } from '../constants';
 
 export const ExpenseForm = () => {
     const { currentUser } = useAuth();
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('Mercado');
+    const [category, setCategory] = useState(CATEGORIES[0]);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
 
