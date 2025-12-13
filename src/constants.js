@@ -1,15 +1,15 @@
 export const CATEGORIES = [
-    'Mercado', 
-    'Contas - Outras', 
-    'Agua', 
-    'Energia', 
-    'Gas', 
-    'Internet', 
-    'Telefonia', 
-    'Condominio e Manutencao Casa', 
-    'Lazer', 
-    'Transporte', 
-    'Saúde', 
+    'Mercado',
+    'Contas - Outras',
+    'Agua',
+    'Energia',
+    'Gas',
+    'Internet',
+    'Telefonia',
+    'Condominio e Manutencao Casa',
+    'Lazer',
+    'Transporte',
+    'Saúde',
     'Outros'
 ];
 
@@ -27,3 +27,5 @@ export const CATEGORY_COLORS = {
     'Saúde': '#a78bfa',
     'Outros': '#fb923c'
 };
+
+export const APP_PIN = '120900';
